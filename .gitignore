@@ -1,3 +1,6 @@
+# special: user generated file
+services.c
+
 # Object files
 *.o
 *.ko

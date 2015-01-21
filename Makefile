@@ -1,4 +1,4 @@
-USER_SRCS+=echo.c
+SERVICES=datetime.c echo.c
 # USER_INCLUDE+=-I../include
 # USER_LIB+=-L../lib
 
@@ -8,7 +8,7 @@ LD=$(CROSS_COMPILE)gcc
 CFLAGS+=$(OPTION) $(USER_CFLAGS) $(USER_INCLUDE) $(DEBUG) -g -Wall # -Werror
 LDFLAGS+=$(OPTION) $(USER_LDFLAGS) $(USER_LIB) -levent
 
-SOURCES=main.c evops.c $(USER_SRCS)
+SOURCES=main.c evops.c services.c $(SERVICES)
 OBJS=$(SOURCES:.c=.o)
 TARGET=event-test
 
@@ -19,6 +19,9 @@ $(TARGET):$(OBJS)
 
 test-%:%.c
 	$(CC) -DTEST $^ $(LDFLAGS) -o $@
+
+services.c:services.py $(SERVICES)
+	./$^ > $@
 
 # dependencies
 include $(SOURCES:.c=.d)
@@ -31,7 +34,7 @@ include $(SOURCES:.c=.d)
 .PHONY:all clean
 
 clean:
-	-rm $(TARGET) $(OBJS)
+	-rm $(TARGET) $(OBJS) services.c
 
 dep-clean:
 	-rm *.d *.d.*

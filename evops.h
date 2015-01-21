@@ -1,15 +1,27 @@
 #ifndef EVENT_HANDLER_CLASS_H
 #define EVENT_HANDLER_CLASS_H
 
+#include <endian.h>
 #include <event2/event.h>
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
 #include <event2/listener.h>
 
+#if __BYTE_ORDER == __BIG_ENDIAN
+#define INET_PORT(p)	(p)
+#else
+#define INET_PORT(p)	(((p & 0xff) << 8) | ((p >> 8) & 0xff))
+#endif
+
 struct evops
 {
-	/* accept() */
-	void* (*on_accept)(struct bufferevent* bev);
+	const char* name;
+	struct sockaddr* host;
+	int sockaddr_len;
+	/* for saving the listener. no need to assign */
+	struct evconnlistener *listener;
+	/* accept() -> should (>=0) or shouldn't(<0) accept the connection */
+	int (*on_accept)(struct bufferevent* bev, void** parg);
 	/* connect() -> arg */
 	void (*on_connected)(struct bufferevent* bev, void *arg);
 	void (*on_connect_failed)(struct bufferevent* bev, short events, void *arg);
@@ -22,7 +34,8 @@ struct evops
 
 int evops_on_accept(struct event_base* base, evutil_socket_t fd, struct evops* ops);
 int evops_connect(struct event_base *base, struct sockaddr* target, int socklen, struct evops* ops, void* opsarg);
-int evops_start_service(struct event_base *base, struct sockaddr* host, int socklen, struct evops* template);
+int evops_start_service(struct event_base *base, struct evops* template);
+int evops_start_services(struct event_base *base, struct evops* templates[]);
 void evops_close(struct bufferevent *bev, short events, void *arg);
 
 static inline void evops_register(struct bufferevent *bev, struct evops* ops, void* data) {

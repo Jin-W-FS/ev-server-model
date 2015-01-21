@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 
 #include <signal.h>
@@ -59,8 +60,15 @@ int evops_on_accept(struct event_base* base, evutil_socket_t fd, struct evops* o
 	struct bufferevent *bev = bufferevent_socket_new(base, fd, BEV_OPT_INIT_OPT);
 	if (!bev) return -1;
 	void* arg = NULL;
-	if (ops->on_accept) arg = ops->on_accept(bev);
-	evops_register(bev, ops, arg);
+	int accept = 0;
+	if (ops->on_accept) {
+		accept = ops->on_accept(bev, &arg);
+	}
+	if (accept < 0) {
+		bufferevent_free(bev);
+	} else {
+		evops_register(bev, ops, arg);
+	}
 	return 0;
 }
 
@@ -74,7 +82,13 @@ void evops_close(struct bufferevent *bev, short events, void *arg)
 static void evops_listener_cb(struct evconnlistener*, evutil_socket_t, struct sockaddr*, int socklen, void*);
 static void evops_signal_cb(evutil_socket_t, short, void *);
 
-int evops_start_service(struct event_base *_base, struct sockaddr* host, int socklen, struct evops* template)
+int evops_start_service(struct event_base *_base, struct evops* template) 
+{
+	struct evops* templates[] = { template, NULL };
+	return evops_start_services(_base, templates);
+}
+
+int evops_start_services(struct event_base *_base, struct evops* templates[])
 {
 	int ret = -1;
 	struct event_base* base = _base ? _base : event_base_new();
@@ -83,14 +97,26 @@ int evops_start_service(struct event_base *_base, struct sockaddr* host, int soc
 	struct event *signal_event = evsignal_new(base, SIGINT, evops_signal_cb, (void *)base);
 	if (!signal_event || event_add(signal_event, NULL) < 0) goto clear_1;
 
-	struct evconnlistener *listener = evconnlistener_new_bind(base, evops_listener_cb, template,
-		LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE, -1, host, socklen);
-	if (!listener) goto clear_2;
-
+	struct evops** entry;
+	for (entry = &templates[0]; *entry; entry++) {
+		struct evops* p = *entry;
+		if (p->name) printf("start service: %s\n", p->name);
+		p->listener = evconnlistener_new_bind(base, evops_listener_cb, p,
+			LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE, -1, p->host, p->sockaddr_len);
+		if (!p->listener) {
+			perror("Err: create listener");
+			goto clear_2;
+		}
+	}
+	
 	ret = event_base_dispatch(base);
 
-	evconnlistener_free(listener);
 clear_2:
+	for (--entry; entry >= &templates[0]; --entry) {
+		struct evops* p = *entry;
+		evconnlistener_free(p->listener);
+	}
+
 	event_free(signal_event);
 clear_1:
 	if (!_base) event_base_free(base);
