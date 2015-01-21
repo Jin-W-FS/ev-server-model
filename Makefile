@@ -1,11 +1,12 @@
 SERVICES=datetime.c echo.c
+SERVICES:=$(addprefix services/, $(SERVICES))
 # USER_INCLUDE+=-I../include
 # USER_LIB+=-L../lib
 
 CC=$(CROSS_COMPILE)gcc
 LD=$(CROSS_COMPILE)gcc
 
-CFLAGS+=$(OPTION) $(USER_CFLAGS) $(USER_INCLUDE) $(DEBUG) -g -Wall # -Werror
+CFLAGS+=$(OPTION) $(USER_CFLAGS) $(USER_INCLUDE) $(DEBUG) -I$(PWD) -g -Wall # -Werror
 LDFLAGS+=$(OPTION) $(USER_LDFLAGS) $(USER_LIB) -levent
 
 SOURCES=main.c evops.c services.c $(SERVICES)
@@ -37,4 +38,4 @@ clean:
 	-rm $(TARGET) $(OBJS) services.c
 
 dep-clean:
-	-rm *.d *.d.*
+	-(find . -name '*.d' -or -name '*.d.*' -or -name '*~' | xargs rm)
