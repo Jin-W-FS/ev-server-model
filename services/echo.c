@@ -2,9 +2,8 @@
 #include <netinet/in.h>
 #include "services.h"
 
-static void on_echo_recv(struct bufferevent *bev, void *arg)
+static void on_echo_recv(struct bufferevent* bev, void *arg)
 {
-	
 	struct evbuffer* in = bufferevent_get_input(bev);
 	struct evbuffer* out= bufferevent_get_output(bev);
 	evbuffer_add_buffer(out, in);

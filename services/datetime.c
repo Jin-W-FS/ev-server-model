@@ -2,13 +2,17 @@
 #include <time.h>
 #include "services.h"
 
-static int datetime_on_accept(struct bufferevent *bev, void** parg)
+static void datetime_on_accept(struct bufferevent *bev, struct evops* ops)
 {
 	char buff[200];
 	time_t t = time(NULL);
-	if (!ctime_r(&t, buff)) return -1;
-	if (bufferevent_write(bev, buff, strlen(buff)) < 0) return -1;
-	return 0;
+	if (!ctime_r(&t, buff)) goto failed;
+	if (bufferevent_write(bev, buff, strlen(buff)) < 0) goto failed;
+	evops_register(bev, ops, NULL);
+	return;
+failed:
+	bufferevent_free(bev);
+	return;
 }
 
 void datetime_on_send(struct bufferevent *bev, void *arg)

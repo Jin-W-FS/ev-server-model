@@ -1,4 +1,4 @@
-SERVICES=datetime.c echo.c
+SERVICES=datetime.c echo.c pipe.c
 SERVICES:=$(addprefix services/, $(SERVICES))
 # USER_INCLUDE+=-I../include
 # USER_LIB+=-L../lib
